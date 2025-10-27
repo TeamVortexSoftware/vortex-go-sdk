@@ -7,10 +7,14 @@ type InvitationTarget struct {
 }
 
 // InvitationGroup represents a group associated with an invitation
+// This matches the MemberGroups table structure from the API response
 type InvitationGroup struct {
-	ID   string `json:"id"`
-	Type string `json:"type"`
-	Name string `json:"name"`
+	ID        string `json:"id"`        // Vortex internal UUID
+	AccountID string `json:"accountId"` // Vortex account ID
+	GroupID   string `json:"groupId"`   // Customer's group ID (the ID they provided)
+	Type      string `json:"type"`      // Group type (e.g., "workspace", "team")
+	Name      string `json:"name"`      // Group name
+	CreatedAt string `json:"createdAt"` // Timestamp when the group was created
 }
 
 // InvitationAcceptance represents an accepted invitation
@@ -70,11 +74,13 @@ type Identifier struct {
 	Value string `json:"value"`
 }
 
-// Group represents a user group
+// Group represents a user group for JWT generation (input)
+// For backward compatibility, supports both 'id' and 'groupId' fields
 type Group struct {
-	Type string `json:"type"`
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	Type    string  `json:"type"`
+	ID      *string `json:"id,omitempty"`      // Legacy field (deprecated, use GroupID)
+	GroupID *string `json:"groupId,omitempty"` // Preferred: Customer's group ID
+	Name    string  `json:"name"`
 }
 
 // JWTHeader represents the JWT header
