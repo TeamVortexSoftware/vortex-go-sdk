@@ -42,7 +42,7 @@ func TestGenerateJWT(t *testing.T) {
 			{Type: "email", Value: "test@example.com"},
 		},
 		Groups: []Group{
-			{Type: "team", ID: "team-1", Name: "Engineering"},
+			{Type: "team", GroupID: stringPtr("team-1"), Name: "Engineering"},
 		},
 		Role: stringPtr("admin"),
 	}

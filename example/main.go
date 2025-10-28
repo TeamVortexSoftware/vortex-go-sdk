@@ -26,8 +26,8 @@ func main() {
 			{Type: "sms", Value: "+1234567890"},
 		},
 		Groups: []vortex.Group{
-			{Type: "team", ID: "team-1", Name: "Engineering"},
-			{Type: "organization", ID: "org-1", Name: "Acme Corp"},
+			{Type: "team", GroupID: stringPtr("team-1"), Name: "Engineering"},
+			{Type: "organization", GroupID: stringPtr("org-1"), Name: "Acme Corp"},
 		},
 		Role: stringPtr("admin"),
 	}
