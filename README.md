@@ -34,31 +34,32 @@ func main() {
 ### JWT Generation
 
 ```go
-// Generate JWT for a user
-payload := vortex.JWTPayload{
-    UserID: "user123",
-    Identifiers: []vortex.Identifier{
-        {Type: "email", Value: "user@example.com"},
-        {Type: "sms", Value: "+1234567890"},
-    },
-    Groups: []vortex.Group{
-        {Type: "team", GroupID: stringPtr("team-1"), Name: "Engineering"},
-        {Type: "organization", GroupID: stringPtr("org-1"), Name: "Acme Corp"},
-    },
-    Role: stringPtr("admin"),
+// Simple usage
+user := &vortex.User{
+    ID:          "user-123",
+    Email:       "user@example.com",
+    AdminScopes: []string{"autoJoin"},
 }
 
-jwt, err := client.GenerateJWT(payload)
+jwt, err := client.GenerateJWT(user, nil)
 if err != nil {
     log.Fatal(err)
 }
 
 fmt.Printf("JWT: %s\n", jwt)
 
-// Helper function for optional string fields
-func stringPtr(s string) *string {
-    return &s
+// With additional properties
+extra := map[string]interface{}{
+    "role":       "admin",
+    "department": "Engineering",
 }
+
+jwt, err = client.GenerateJWT(user, extra)
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Printf("JWT with extra: %s\n", jwt)
 ```
 
 ### Invitation Management
@@ -234,29 +235,15 @@ type InvitationResult struct {
 ### JWT Types
 
 ```go
-// JWTPayload represents the payload for JWT generation
-type JWTPayload struct {
-    UserID      string      `json:"userId"`
-    Identifiers []Identifier `json:"identifiers"`
-    Groups      []Group     `json:"groups"`
-    Role        *string     `json:"role,omitempty"`
-}
-
-// Identifier represents a user identifier
-type Identifier struct {
-    Type  string `json:"type"`  // "email", "sms"
-    Value string `json:"value"`
-}
-
-// Group represents a user group for JWT generation (input)
-// For backward compatibility, supports both 'id' and 'groupId' fields
-type Group struct {
-    Type    string  `json:"type"`
-    ID      *string `json:"id,omitempty"`      // Legacy field (deprecated, use GroupID)
-    GroupID *string `json:"groupId,omitempty"` // Preferred: Customer's group ID
-    Name    string  `json:"name"`
+// User represents user data for JWT generation
+type User struct {
+    ID          string   `json:"id"`
+    Email       string   `json:"email"`
+    AdminScopes []string `json:"adminScopes,omitempty"`
 }
 ```
+
+The `AdminScopes` field is optional. If it contains `"autoJoin"`, the JWT will include `userIsAutoJoinAdmin: true`.
 
 ## Development
 

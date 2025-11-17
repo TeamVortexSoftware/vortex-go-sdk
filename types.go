@@ -1,5 +1,12 @@
 package vortex
 
+// User represents user data for JWT generation
+type User struct {
+	ID          string   `json:"id"`
+	Email       string   `json:"email"`
+	AdminScopes []string `json:"adminScopes,omitempty"`
+}
+
 // InvitationTarget represents the target of an invitation
 type InvitationTarget struct {
 	Type  string `json:"type"`
@@ -60,12 +67,20 @@ type InvitationsResponse struct {
 	Invitations []InvitationResult `json:"invitations"`
 }
 
-// JWTPayload represents the payload for JWT generation
+// JWTPayload represents the payload for JWT generation (legacy format)
+// Deprecated: Use JWTPayloadSimple for new implementations
 type JWTPayload struct {
 	UserID      string      `json:"userId"`
 	Identifiers []Identifier `json:"identifiers"`
 	Groups      []Group     `json:"groups"`
 	Role        *string     `json:"role,omitempty"`
+}
+
+// JWTPayloadSimple represents the simplified JWT payload (recommended)
+type JWTPayloadSimple struct {
+	UserID              string `json:"userId"`
+	UserEmail           string `json:"userEmail"`
+	UserIsAutoJoinAdmin *bool  `json:"userIsAutoJoinAdmin,omitempty"`
 }
 
 // Identifier represents a user identifier (email, sms, etc.)
@@ -92,12 +107,15 @@ type JWTHeader struct {
 }
 
 // JWTClaims represents the JWT payload claims
+// Supports both new simplified format and legacy format
 type JWTClaims struct {
-	UserID      string      `json:"userId"`
-	Groups      []Group     `json:"groups"`
-	Role        *string     `json:"role,omitempty"`
-	Expires     int64       `json:"expires"`
-	Identifiers []Identifier `json:"identifiers"`
+	UserID              string       `json:"userId"`
+	UserEmail           string       `json:"userEmail,omitempty"`
+	UserIsAutoJoinAdmin *bool        `json:"userIsAutoJoinAdmin,omitempty"`
+	Groups              []Group      `json:"groups,omitempty"`
+	Role                *string      `json:"role,omitempty"`
+	Expires             int64        `json:"expires"`
+	Identifiers         []Identifier `json:"identifiers,omitempty"`
 }
 
 // APIError represents an error from the Vortex API

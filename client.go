@@ -59,8 +59,29 @@ func NewClientWithOptions(apiKey, baseURL string, httpClient *http.Client) *Clie
 	}
 }
 
-// GenerateJWT creates a JWT token using the same algorithm as Node.js SDK
-func (c *Client) GenerateJWT(payload JWTPayload) (string, error) {
+// GenerateJWT creates a JWT token with the given user data and optional extra properties
+//
+// The user parameter should contain the user's ID, email, and optional admin scopes.
+// If adminScopes contains "autoJoin", the JWT will include userIsAutoJoinAdmin: true.
+// The extra parameter can contain additional properties to include in the JWT payload.
+//
+// Example:
+//
+//	user := &vortex.User{
+//	    ID:          "user-123",
+//	    Email:       "user@example.com",
+//	    AdminScopes: []string{"autoJoin"},
+//	}
+//	jwt, err := client.GenerateJWT(user, nil)
+//
+// Example with extra properties:
+//
+//	extra := map[string]interface{}{
+//	    "role":       "admin",
+//	    "department": "Engineering",
+//	}
+//	jwt, err := client.GenerateJWT(user, extra)
+func (c *Client) GenerateJWT(user *User, extra map[string]interface{}) (string, error) {
 	// Parse API key: format is VRTX.base64encodedId.key
 	parts := strings.Split(c.apiKey, ".")
 	if len(parts) != 3 {
@@ -103,12 +124,28 @@ func (c *Client) GenerateJWT(payload JWTPayload) (string, error) {
 		Kid: id.String(),
 	}
 
-	claims := JWTClaims{
-		UserID:      payload.UserID,
-		Groups:      payload.Groups,
-		Role:        payload.Role,
-		Expires:     expires,
-		Identifiers: payload.Identifiers,
+	// Build payload with required fields
+	payload := map[string]interface{}{
+		"userId":    user.ID,
+		"userEmail": user.Email,
+		"expires":   expires,
+	}
+
+	// Add userIsAutoJoinAdmin if 'autoJoin' is in adminScopes
+	if user.AdminScopes != nil {
+		for _, scope := range user.AdminScopes {
+			if scope == "autoJoin" {
+				payload["userIsAutoJoinAdmin"] = true
+				break
+			}
+		}
+	}
+
+	// Add any additional properties from extra
+	if extra != nil {
+		for key, value := range extra {
+			payload[key] = value
+		}
 	}
 
 	// Step 3: Base64URL encode header and payload
@@ -117,7 +154,7 @@ func (c *Client) GenerateJWT(payload JWTPayload) (string, error) {
 		return "", fmt.Errorf("failed to marshal JWT header: %w", err)
 	}
 
-	payloadJSON, err := json.Marshal(claims)
+	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal JWT payload: %w", err)
 	}

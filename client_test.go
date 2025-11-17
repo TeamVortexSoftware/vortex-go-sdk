@@ -36,18 +36,42 @@ func TestGenerateJWT(t *testing.T) {
 	// Test with valid API key format (UUID 12345678-1234-1234-1234-123456789012 encoded in base64url)
 	client := NewClient("VRTX.EjRWeBI0EjQSNBI0VniQEg.test-key")
 
-	payload := JWTPayload{
-		UserID: "user123",
-		Identifiers: []Identifier{
-			{Type: "email", Value: "test@example.com"},
-		},
-		Groups: []Group{
-			{Type: "team", GroupID: stringPtr("team-1"), Name: "Engineering"},
-		},
-		Role: stringPtr("admin"),
+	user := &User{
+		ID:          "user-123",
+		Email:       "test@example.com",
+		AdminScopes: []string{"autoJoin"},
 	}
 
-	jwt, err := client.GenerateJWT(payload)
+	jwt, err := client.GenerateJWT(user, nil)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if jwt == "" {
+		t.Error("Expected non-empty JWT")
+	}
+
+	// JWT should have 3 parts separated by dots
+	parts := len(jwt) > 0 && len(splitJWT(jwt)) == 3
+	if !parts {
+		t.Error("JWT should have 3 parts separated by dots")
+	}
+}
+
+func TestGenerateJWT_WithExtra(t *testing.T) {
+	client := NewClient("VRTX.EjRWeBI0EjQSNBI0VniQEg.test-key")
+
+	user := &User{
+		ID:    "user-123",
+		Email: "test@example.com",
+	}
+
+	extra := map[string]interface{}{
+		"role":       "admin",
+		"department": "Engineering",
+	}
+
+	jwt, err := client.GenerateJWT(user, extra)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -76,15 +100,12 @@ func TestGenerateJWT_InvalidAPIKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := NewClient(tt.apiKey)
-			payload := JWTPayload{
-				UserID: "user123",
-				Identifiers: []Identifier{
-					{Type: "email", Value: "test@example.com"},
-				},
-				Groups: []Group{},
+			user := &User{
+				ID:    "user-123",
+				Email: "test@example.com",
 			}
 
-			_, err := client.GenerateJWT(payload)
+			_, err := client.GenerateJWT(user, nil)
 			if err == nil {
 				t.Error("Expected error for invalid API key")
 			}

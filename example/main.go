@@ -17,26 +17,38 @@ func main() {
 
 	client := vortex.NewClient(apiKey)
 
-	// Example 1: Generate JWT
+	// Example 1: Generate JWT - simple usage
 	fmt.Println("=== JWT Generation Example ===")
-	payload := vortex.JWTPayload{
-		UserID: "user123",
-		Identifiers: []vortex.Identifier{
-			{Type: "email", Value: "user@example.com"},
-			{Type: "sms", Value: "+1234567890"},
-		},
-		Groups: []vortex.Group{
-			{Type: "team", GroupID: stringPtr("team-1"), Name: "Engineering"},
-			{Type: "organization", GroupID: stringPtr("org-1"), Name: "Acme Corp"},
-		},
-		Role: stringPtr("admin"),
+	user := &vortex.User{
+		ID:          "user-123",
+		Email:       "admin@example.com",
+		AdminScopes: []string{"autoJoin"},
 	}
 
-	jwt, err := client.GenerateJWT(payload)
+	jwt1, err := client.GenerateJWT(user, nil)
 	if err != nil {
 		log.Printf("Failed to generate JWT: %v", err)
 	} else {
-		fmt.Printf("Generated JWT: %s\n", jwt)
+		fmt.Printf("Generated JWT: %s\n", jwt1)
+	}
+
+	// Example 1b: Generate JWT with additional properties
+	fmt.Println("\n=== JWT Generation with Additional Properties ===")
+	user2 := &vortex.User{
+		ID:    "user-456",
+		Email: "user@example.com",
+	}
+
+	extra := map[string]interface{}{
+		"role":       "admin",
+		"department": "Engineering",
+	}
+
+	jwt2, err := client.GenerateJWT(user2, extra)
+	if err != nil {
+		log.Printf("Failed to generate JWT with extra: %v", err)
+	} else {
+		fmt.Printf("Generated JWT with extra: %s\n", jwt2)
 	}
 
 	// Example 2: Get invitations by target
@@ -98,9 +110,4 @@ func main() {
 
 	fmt.Println("\n=== Example Complete ===")
 	fmt.Println("To use with real data, set VORTEX_API_KEY environment variable")
-}
-
-// Helper function for optional string fields
-func stringPtr(s string) *string {
-	return &s
 }
