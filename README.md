@@ -19,15 +19,12 @@ import (
     "fmt"
     "log"
 
-    "github.com/TeamVortexSoftware/vortex-go-sdk"
+    "https://github.com/TeamVortexSoftware/vortex-go-sdk"
 )
 
 func main() {
     // Initialize the client
     client := vortex.NewClient("your-api-key")
-
-    // Or with custom base URL
-    client = vortex.NewClientWithOptions("your-api-key", "https://custom-api.example.com", nil)
 }
 ```
 
