@@ -62,7 +62,7 @@ func NewClientWithOptions(apiKey, baseURL string, httpClient *http.Client) *Clie
 // GenerateJWT creates a JWT token with the given user data and optional extra properties
 //
 // The user parameter should contain the user's ID, email, and optional admin scopes.
-// If adminScopes contains "autoJoin", the JWT will include userIsAutoJoinAdmin: true.
+// If adminScopes is provided, the full array will be included in the JWT payload.
 // The extra parameter can contain additional properties to include in the JWT payload.
 //
 // Example:
@@ -131,14 +131,9 @@ func (c *Client) GenerateJWT(user *User, extra map[string]interface{}) (string, 
 		"expires":   expires,
 	}
 
-	// Add userIsAutoJoinAdmin if 'autoJoin' is in adminScopes
+	// Add adminScopes if present
 	if user.AdminScopes != nil {
-		for _, scope := range user.AdminScopes {
-			if scope == "autoJoin" {
-				payload["userIsAutoJoinAdmin"] = true
-				break
-			}
-		}
+		payload["adminScopes"] = user.AdminScopes
 	}
 
 	// Add any additional properties from extra

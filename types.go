@@ -54,6 +54,8 @@ type InvitationResult struct {
 	ProjectID                string                  `json:"projectId"`
 	Groups                   []InvitationGroup       `json:"groups"`
 	Accepts                  []InvitationAcceptance  `json:"accepts"`
+	Expired                  bool                    `json:"expired"`
+	Expires                  *string                 `json:"expires,omitempty"`
 }
 
 // AcceptInvitationRequest represents the request body for accepting invitations

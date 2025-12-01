@@ -240,7 +240,7 @@ type User struct {
 }
 ```
 
-The `AdminScopes` field is optional. If it contains `"autoJoin"`, the JWT will include `userIsAutoJoinAdmin: true`.
+The `AdminScopes` field is optional. If provided, the full array will be included in the JWT payload as `adminScopes`.
 
 ## Development
 
