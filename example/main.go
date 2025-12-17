@@ -22,7 +22,7 @@ func main() {
 	user := &vortex.User{
 		ID:          "user-123",
 		Email:       "admin@example.com",
-		AdminScopes: []string{"autoJoin"},
+		AdminScopes: []string{"autojoin"},
 	}
 
 	jwt1, err := client.GenerateJWT(user, nil)

@@ -70,7 +70,7 @@ func NewClientWithOptions(apiKey, baseURL string, httpClient *http.Client) *Clie
 //	user := &vortex.User{
 //	    ID:          "user-123",
 //	    Email:       "user@example.com",
-//	    AdminScopes: []string{"autoJoin"},
+//	    AdminScopes: []string{"autojoin"},
 //	}
 //	jwt, err := client.GenerateJWT(user, nil)
 //

@@ -51,11 +51,16 @@ type InvitationResult struct {
 	Target                   []InvitationTarget      `json:"target"`
 	Views                    int                     `json:"views"`
 	WidgetConfigurationID    string                  `json:"widgetConfigurationId"`
+	DeploymentID             string                  `json:"deploymentId"`
 	ProjectID                string                  `json:"projectId"`
 	Groups                   []InvitationGroup       `json:"groups"`
 	Accepts                  []InvitationAcceptance  `json:"accepts"`
+	Scope                    *string                 `json:"scope,omitempty"`
+	ScopeType                *string                 `json:"scopeType,omitempty"`
 	Expired                  bool                    `json:"expired"`
 	Expires                  *string                 `json:"expires,omitempty"`
+	Metadata                 map[string]interface{}  `json:"metadata,omitempty"`
+	PassThrough              *string                 `json:"passThrough,omitempty"`
 }
 
 // AcceptInvitationRequest represents the request body for accepting invitations
@@ -82,7 +87,7 @@ type JWTPayload struct {
 type JWTPayloadSimple struct {
 	UserID              string `json:"userId"`
 	UserEmail           string `json:"userEmail"`
-	UserIsAutoJoinAdmin *bool  `json:"userIsAutoJoinAdmin,omitempty"`
+	UserIsAutojoinAdmin *bool  `json:"userIsAutojoinAdmin,omitempty"`
 }
 
 // Identifier represents a user identifier (email, sms, etc.)
@@ -113,7 +118,7 @@ type JWTHeader struct {
 type JWTClaims struct {
 	UserID              string       `json:"userId"`
 	UserEmail           string       `json:"userEmail,omitempty"`
-	UserIsAutoJoinAdmin *bool        `json:"userIsAutoJoinAdmin,omitempty"`
+	UserIsAutojoinAdmin *bool        `json:"userIsAutojoinAdmin,omitempty"`
 	Groups              []Group      `json:"groups,omitempty"`
 	Role                *string      `json:"role,omitempty"`
 	Expires             int64        `json:"expires"`

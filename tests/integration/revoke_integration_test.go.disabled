@@ -1,0 +1,269 @@
+package vortex_test
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
+	vortex "github.com/TeamVortexSoftware/vortex-suite/packages/vortex-go-sdk"
+)
+
+// TestRevokeIntegration tests the revoke invitation flow: Create -> Get -> Revoke
+func TestRevokeIntegration(t *testing.T) {
+	// Validate required environment variables
+	apiKey := os.Getenv("TEST_INTEGRATION_SDKS_VORTEX_API_KEY")
+	if apiKey == "" {
+		panic("Missing required environment variable: TEST_INTEGRATION_SDKS_VORTEX_API_KEY")
+	}
+
+	clientAPIURL := os.Getenv("TEST_INTEGRATION_SDKS_VORTEX_CLIENT_API_URL")
+	if clientAPIURL == "" {
+		panic("Missing required environment variable: TEST_INTEGRATION_SDKS_VORTEX_CLIENT_API_URL")
+	}
+
+	publicAPIURL := os.Getenv("TEST_INTEGRATION_SDKS_VORTEX_PUBLIC_API_URL")
+	if publicAPIURL == "" {
+		panic("Missing required environment variable: TEST_INTEGRATION_SDKS_VORTEX_PUBLIC_API_URL")
+	}
+
+	sessionID := os.Getenv("TEST_INTEGRATION_SDKS_VORTEX_SESSION_ID")
+	if sessionID == "" {
+		panic("Missing required environment variable: TEST_INTEGRATION_SDKS_VORTEX_SESSION_ID")
+	}
+
+	fmt.Println("\n--- Starting Go SDK Revoke Integration Test ---")
+
+	// Setup clients
+	publicClient := vortex.NewClientWithOptions(apiKey, publicAPIURL, nil)
+
+	// Test data
+	userEmail := os.Getenv("TEST_INTEGRATION_SDKS_USER_EMAIL")
+	if userEmail == "" {
+		panic("Missing required environment variable: TEST_INTEGRATION_SDKS_USER_EMAIL")
+	}
+	userEmail = strings.Replace(userEmail, "{timestamp}", fmt.Sprintf("%d", time.Now().Unix()), -1)
+
+	groupType := os.Getenv("TEST_INTEGRATION_SDKS_GROUP_TYPE")
+	if groupType == "" {
+		panic("Missing required environment variable: TEST_INTEGRATION_SDKS_GROUP_TYPE")
+	}
+
+	groupName := os.Getenv("TEST_INTEGRATION_SDKS_GROUP_NAME")
+	if groupName == "" {
+		panic("Missing required environment variable: TEST_INTEGRATION_SDKS_GROUP_NAME")
+	}
+
+	// TEST_INTEGRATION_SDKS_GROUP_ID is dynamic - generated from timestamp
+	groupID := fmt.Sprintf("test-group-%d", time.Now().Unix())
+
+	// Step 1: Create invitation
+	fmt.Println("Step 1: Creating invitation...")
+	invitationID, err := createInvitation(clientAPIURL, apiKey, sessionID, userEmail, "email", groupType, groupID, groupName)
+	if err != nil {
+		t.Fatalf("Failed to create invitation: %v", err)
+	}
+	fmt.Printf("✓ Created invitation: %s\n", invitationID)
+
+	// Step 2: Get invitation
+	fmt.Println("Step 2: Getting invitation...")
+	invitations, err := publicClient.GetInvitationsByTarget("email", userEmail)
+	if err != nil {
+		t.Fatalf("Failed to get invitations: %v", err)
+	}
+	if len(invitations) == 0 {
+		t.Fatal("No invitations found")
+	}
+
+	// Find our specific invitation
+	var invitation *vortex.InvitationResult
+	for i := range invitations {
+		if invitations[i].ID == invitationID {
+			invitation = &invitations[i]
+			break
+		}
+	}
+	if invitation == nil {
+		invitation = &invitations[0]
+	}
+	fmt.Println("✓ Retrieved invitation successfully")
+
+	// Step 3: Revoke invitation
+	fmt.Println("Step 3: Revoking invitation...")
+	err = publicClient.RevokeInvitation(invitationID)
+	if err != nil {
+		t.Fatalf("Failed to revoke invitation: %v", err)
+	}
+	fmt.Println("✓ Revoked invitation successfully")
+
+	fmt.Println("--- Go SDK Revoke Integration Test Complete ---")
+}
+
+func createInvitation(clientAPIURL, apiKey, sessionID, userEmail, source, groupType, groupID, groupName string) (string, error) {
+	// Generate JWT for authentication
+	vortexClient := vortex.NewClientWithOptions(apiKey, clientAPIURL, nil)
+	userID := os.Getenv("TEST_INTEGRATION_SDKS_USER_ID")
+	if userID == "" {
+		panic("Missing required environment variable: TEST_INTEGRATION_SDKS_USER_ID")
+	}
+	jwt, err := vortexClient.GenerateJWT(&vortex.User{
+		ID:    userID,
+		Email: userEmail,
+	}, map[string]interface{}{
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to generate JWT: %w", err)
+	}
+
+	// Step 1: Fetch widget configuration to get the widget configuration ID and sessionAttestation
+	componentID := os.Getenv("TEST_INTEGRATION_SDKS_VORTEX_COMPONENT_ID")
+	if componentID == "" {
+		panic("Missing required environment variable: TEST_INTEGRATION_SDKS_VORTEX_COMPONENT_ID")
+	}
+	widgetURL := fmt.Sprintf("%s/api/v1/widgets/%s?templateVariables=lzstr:N4Ig5gTg9grgDgfQHYEMC2BTEAuEBlAEQGkACAFQwGcAXEgcWnhABoQBLJANzeowmXRZcBCCQBqUCLwAeLcI0SY0AIz4IAxrCTUcIAMxzNaOCiQBPAZl0SpGaSQCSSdQDoQAXyA", clientAPIURL, componentID)
+
+	widgetReq, err := http.NewRequest("GET", widgetURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create widget request: %w", err)
+	}
+
+	widgetReq.Header.Set("Content-Type", "application/json")
+	widgetReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwt))
+	widgetReq.Header.Set("x-session-id", sessionID)
+
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	widgetResp, err := httpClient.Do(widgetReq)
+	if err != nil {
+		return "", fmt.Errorf("widget request failed: %w", err)
+	}
+	defer widgetResp.Body.Close()
+
+	widgetBody, err := io.ReadAll(widgetResp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read widget response: %w", err)
+	}
+
+	if widgetResp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to fetch widget configuration with HTTP %d: %s", widgetResp.StatusCode, string(widgetBody))
+	}
+
+	var widgetData map[string]interface{}
+	if err := json.Unmarshal(widgetBody, &widgetData); err != nil {
+		return "", fmt.Errorf("failed to unmarshal widget response: %w", err)
+	}
+
+	// Extract widget configuration ID and sessionAttestation
+	data, ok := widgetData["data"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("widget data not found in response")
+	}
+	widgetConfig, ok := data["widgetConfiguration"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("widget configuration not found in response")
+	}
+	actualWidgetConfigID, ok := widgetConfig["id"].(string)
+	if !ok {
+		return "", fmt.Errorf("widget configuration ID not found in response")
+	}
+
+	// Extract sessionAttestation from widget response
+	actualSessionAttestation, ok := data["sessionAttestation"].(string)
+	if !ok || actualSessionAttestation == "" {
+		return "", fmt.Errorf("session attestation not found in widget response")
+	}
+
+	fmt.Printf("Using widget configuration ID: %s\n", actualWidgetConfigID)
+	fmt.Println("Received sessionAttestation from widget")
+
+	// Step 2: Create invitation with the widget configuration ID
+	invitationURL := fmt.Sprintf("%s/api/v1/invitations", clientAPIURL)
+
+	invitationData := map[string]interface{}{
+		"payload": map[string]interface{}{
+			"emails": map[string]interface{}{
+				"value": userEmail,
+				"type":  "email",
+				"role":  "member",
+			},
+		},
+		"group": map[string]interface{}{
+			"type":    groupType,
+			"groupId": groupID,
+			"name":    groupName,
+		},
+		"source":                source,
+		"widgetConfigurationId": actualWidgetConfigID,
+		"templateVariables": map[string]string{
+			"group_name":         "SDK Test Group",
+			"inviter_name":       "Dr Vortex",
+			"group_member_count": "3",
+			"company_name":       "Vortex Inc.",
+		},
+	}
+
+	jsonData, err := json.Marshal(invitationData)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", invitationURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwt))
+	req.Header.Set("x-session-id", sessionID)
+	req.Header.Set("x-session-attestation", actualSessionAttestation)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("create invitation failed with HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	// The API returns the full widget configuration with invitation entries
+	var invitationID string
+	if data, ok := result["data"].(map[string]interface{}); ok {
+		if entries, ok := data["invitationEntries"].([]interface{}); ok && len(entries) > 0 {
+			if firstEntry, ok := entries[0].(map[string]interface{}); ok {
+				if id, ok := firstEntry["id"].(string); ok {
+					invitationID = id
+				}
+			}
+		}
+	}
+
+	// Fallback to direct ID if not in nested structure
+	if invitationID == "" {
+		if id, ok := result["id"].(string); ok {
+			invitationID = id
+		}
+	}
+
+	if invitationID == "" {
+		return "", fmt.Errorf("invitation ID not found in response")
+	}
+
+	fmt.Printf("Successfully extracted invitation ID: %s\n", invitationID)
+	return invitationID, nil
+}

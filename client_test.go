@@ -39,7 +39,7 @@ func TestGenerateJWT(t *testing.T) {
 	user := &User{
 		ID:          "user-123",
 		Email:       "test@example.com",
-		AdminScopes: []string{"autoJoin"},
+		AdminScopes: []string{"autojoin"},
 	}
 
 	jwt, err := client.GenerateJWT(user, nil)

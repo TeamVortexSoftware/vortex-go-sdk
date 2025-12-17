@@ -1,3 +1,6 @@
+//go:build !integration
+// +build !integration
+
 package main
 
 import (
@@ -20,7 +23,7 @@ func main() {
 	userWithAdmin := &vortex.User{
 		ID:          "test-user-123",
 		Email:       "test@example.com",
-		AdminScopes: []string{"autoJoin"},
+		AdminScopes: []string{"autojoin"},
 	}
 	jwtWithAdmin, err := client.GenerateJWT(userWithAdmin, nil)
 	if err != nil {
